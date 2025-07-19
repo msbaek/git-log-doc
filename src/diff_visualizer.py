@@ -25,26 +25,35 @@ class DiffVisualizer:
     
     def _setup_korean_font(self):
         """Setup Korean font for matplotlib"""
-        system = platform.system()
-        
-        if system == 'Darwin':  # macOS
-            font_candidates = ['AppleGothic', 'Apple SD Gothic Neo', 'Malgun Gothic']
-        elif system == 'Windows':
-            font_candidates = ['Malgun Gothic', 'NanumGothic', 'Gulim']
-        else:  # Linux
-            font_candidates = ['NanumGothic', 'UnDotum', 'DejaVu Sans']
-        
         # Get available fonts
         available_fonts = [f.name for f in font_manager.fontManager.ttflist]
         
-        # Try to set Korean font
+        # Prioritize NanumGothic
+        font_candidates = ['NanumGothic', 'Nanum Gothic', 'NanumGothicCoding', '나눔고딕', 'NanumGothicOTF']
+        
+        # Try to set NanumGothic first
         for font in font_candidates:
             if font in available_fonts:
                 rcParams['font.family'] = font
                 self.logger.info(f"Korean font set to: {font}")
                 return
         
-        # Fallback to default
+        # If NanumGothic not found, try system-specific fonts
+        system = platform.system()
+        if system == 'Darwin':  # macOS
+            fallback_fonts = ['AppleGothic', 'Apple SD Gothic Neo']
+        elif system == 'Windows':
+            fallback_fonts = ['Malgun Gothic', 'Gulim']
+        else:  # Linux
+            fallback_fonts = ['UnDotum', 'DejaVu Sans']
+        
+        for font in fallback_fonts:
+            if font in available_fonts:
+                rcParams['font.family'] = font
+                self.logger.info(f"Korean font set to fallback: {font}")
+                return
+        
+        # Final fallback
         rcParams['font.family'] = 'DejaVu Sans'
         self.logger.warning("Korean font not found, using default font")
         
