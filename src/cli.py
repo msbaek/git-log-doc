@@ -19,8 +19,9 @@ from .progress_reporter import ProgressReporter
 @click.option('--max-files', type=int, default=10, help='Maximum files per commit (default: 10)')
 @click.option('--image-width', type=int, default=1200, help='Image width in pixels (default: 1200)')
 @click.option('--exclude-patterns', help='Comma-separated patterns to exclude (e.g., *.lock,node_modules/*)')
+@click.option('--all-commits', is_flag=True, help='Include all commits in branch history (not just branch-specific commits)')
 @click.option('--verbose', is_flag=True, help='Enable verbose logging')
-def main(url, local, branch, commits, output, max_files, image_width, exclude_patterns, verbose):
+def main(url, local, branch, commits, output, max_files, image_width, exclude_patterns, all_commits, verbose):
     """Git Commit Documentation Generator
     
     Generate markdown documentation with visual diffs for git commits.
@@ -40,7 +41,7 @@ def main(url, local, branch, commits, output, max_files, image_width, exclude_pa
         progress = ProgressReporter()
         
         progress.start_task("저장소 분석 중...")
-        git_handler = GitHandler(url=url, local_path=local, branch=branch)
+        git_handler = GitHandler(url=url, local_path=local, branch=branch, all_commits=all_commits)
         repo_info = git_handler.get_repository_info()
         
         if commits:

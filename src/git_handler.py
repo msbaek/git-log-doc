@@ -12,9 +12,10 @@ from .utils.logger import get_logger
 class GitHandler:
     """Handle Git repository operations for both local and remote repositories"""
     
-    def __init__(self, url=None, local_path=None, branch='main'):
+    def __init__(self, url=None, local_path=None, branch='main', all_commits=False):
         self.logger = get_logger('git-doc-gen')
         self.branch = branch
+        self.all_commits = all_commits
         self.repo = None
         self.repo_info = {}
         
@@ -81,7 +82,29 @@ class GitHandler:
         self.logger.info(f"브랜치 {self.repo_info['branch']}의 커밋 목록 가져오기")
         
         try:
-            commits = list(self.repo.iter_commits(self.repo_info['branch']))
+            current_branch = self.repo_info['branch']
+            
+            # Find the common ancestor with main/master branch
+            main_branch = None
+            for branch_name in ['main', 'master']:
+                try:
+                    self.repo.commit(branch_name)
+                    main_branch = branch_name
+                    break
+                except:
+                    continue
+            
+            if self.all_commits or not main_branch or current_branch == main_branch:
+                # Get all commits in the branch
+                commits = list(self.repo.iter_commits(current_branch))
+                self.logger.info(f"Getting all commits from {current_branch}")
+            else:
+                # Get commits that are only in the current branch
+                # Using git log syntax: branch1..branch2 shows commits in branch2 but not in branch1
+                commit_range = f"{main_branch}..{current_branch}"
+                commits = list(self.repo.iter_commits(commit_range))
+                self.logger.info(f"Getting commits unique to {current_branch} (excluding {main_branch})")
+            
             # Reverse to get chronological order (oldest first)
             commits.reverse()
             commit_hashes = [commit.hexsha for commit in commits]
