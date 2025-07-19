@@ -82,6 +82,8 @@ class GitHandler:
         
         try:
             commits = list(self.repo.iter_commits(self.repo_info['branch']))
+            # Reverse to get chronological order (oldest first)
+            commits.reverse()
             commit_hashes = [commit.hexsha for commit in commits]
             self.logger.info(f"총 {len(commit_hashes)}개의 커밋 발견")
             return commit_hashes

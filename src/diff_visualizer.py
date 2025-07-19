@@ -25,37 +25,17 @@ class DiffVisualizer:
     
     def _setup_korean_font(self):
         """Setup Korean font for matplotlib"""
-        # Get available fonts
-        available_fonts = [f.name for f in font_manager.fontManager.ttflist]
-        
-        # Prioritize NanumGothic
-        font_candidates = ['NanumGothic', 'Nanum Gothic', 'NanumGothicCoding', '나눔고딕', 'NanumGothicOTF']
-        
-        # Try to set NanumGothic first
-        for font in font_candidates:
-            if font in available_fonts:
-                rcParams['font.family'] = font
-                self.logger.info(f"Korean font set to: {font}")
-                return
-        
-        # If NanumGothic not found, try system-specific fonts
         system = platform.system()
+        
         if system == 'Darwin':  # macOS
-            fallback_fonts = ['AppleGothic', 'Apple SD Gothic Neo']
+            # Use AppleGothic which is available on all macOS systems
+            rcParams['font.family'] = 'AppleGothic'
         elif system == 'Windows':
-            fallback_fonts = ['Malgun Gothic', 'Gulim']
+            rcParams['font.family'] = 'Malgun Gothic'
         else:  # Linux
-            fallback_fonts = ['UnDotum', 'DejaVu Sans']
+            rcParams['font.family'] = 'DejaVu Sans'
         
-        for font in fallback_fonts:
-            if font in available_fonts:
-                rcParams['font.family'] = font
-                self.logger.info(f"Korean font set to fallback: {font}")
-                return
-        
-        # Final fallback
-        rcParams['font.family'] = 'DejaVu Sans'
-        self.logger.warning("Korean font not found, using default font")
+        self.logger.info(f"Font set to: {rcParams['font.family']}")
         
     def generate_diff_image(self, commit_info, index):
         """Generate a diff image for a commit"""
@@ -79,7 +59,8 @@ class DiffVisualizer:
         # Calculate image dimensions
         total_lines = sum(len(f['diff_content']) for f in commit_info['files'])
         header_lines = 4 + len(commit_info['files']) * 3
-        total_height = max(400, (total_lines + header_lines) * 20)
+        # Increase height per line from 20 to 30 pixels for better spacing
+        total_height = max(600, (total_lines + header_lines) * 30)
         
         fig_height = total_height / 100
         fig, ax = plt.subplots(figsize=(self.image_width/100, fig_height))
@@ -91,7 +72,8 @@ class DiffVisualizer:
         
         # Create header
         y_position = 0.98
-        line_height = 0.015
+        # Increase line height for better readability
+        line_height = 0.025
         
         # Commit information
         ax.text(0.02, y_position, f"Commit: {commit_info['full_hash']}", 
