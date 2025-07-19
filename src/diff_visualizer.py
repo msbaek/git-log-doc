@@ -56,27 +56,29 @@ class DiffVisualizer:
             raise DiffVisualizationError(f"이미지 생성 실패: {str(e)}")
     
     def _create_diff_image(self, output_path, commit_info):
-        """Create a side-by-side diff image with matplotlib"""
-        # Calculate image dimensions
+        """Create a GitHub-style side-by-side diff image"""
+        # Calculate total lines needed
         total_diff_lines = 0
         for file_info in commit_info['files']:
             left_lines, right_lines = self._prepare_side_by_side_diff(file_info['diff_content'])
             total_diff_lines += max(len(left_lines), len(right_lines))
         
-        header_lines = 6 + len(commit_info['files']) * 3
-        total_height = max(800, (total_diff_lines + header_lines) * 25)
+        # Calculate dimensions
+        header_height = 150  # pixels for commit header
+        file_header_height = 50  # pixels per file header
+        line_height_px = 20  # pixels per line
+        total_height = header_height + len(commit_info['files']) * file_header_height + total_diff_lines * line_height_px + 100
         
-        fig_height = total_height / 100
-        fig, ax = plt.subplots(figsize=(self.image_width/100, fig_height))
-        
-        # Setup axes
+        fig_height = max(8, total_height / 100)
+        fig = plt.figure(figsize=(self.image_width/100, fig_height), facecolor='white')
+        ax = fig.add_subplot(111)
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.axis('off')
         
-        # Header section
+        # Variables for layout
         y_position = 0.98
-        line_height = 0.020
+        line_height = 0.015
         
         # Commit information
         ax.text(0.02, y_position, f"Commit: {commit_info['full_hash']}", 
@@ -103,51 +105,61 @@ class DiffVisualizer:
         y_position -= line_height * 2
         
         # File diffs
-        for file_info in commit_info['files']:
-            # File header
-            file_color = self._get_file_color(file_info['change_type'])
-            ax.text(0.02, y_position, f"{file_info['change_type'].upper()}: {file_info['path']}", 
-                    fontsize=11, weight='bold', color=file_color)
-            y_position -= line_height * 1.5
+        for file_idx, file_info in enumerate(commit_info['files']):
+            if y_position < 0.1:
+                break
+                
+            # File header with GitHub style
+            file_bg_color = '#f6f8fa'
+            file_rect = plt.Rectangle((0.01, y_position - line_height*1.5), 0.98, line_height*1.5,
+                                    facecolor=file_bg_color, edgecolor='#e1e4e8', linewidth=1)
+            ax.add_patch(file_rect)
             
-            # Draw column headers for side-by-side view
-            ax.text(0.02, y_position, "Original", fontsize=9, weight='bold', color='darkred')
-            ax.text(0.52, y_position, "Modified", fontsize=9, weight='bold', color='darkgreen')
-            y_position -= line_height
-            
-            # Draw separator line
-            ax.plot([0.02, 0.48], [y_position + line_height/2, y_position + line_height/2], 
-                   color='lightgray', linewidth=0.5)
-            ax.plot([0.52, 0.98], [y_position + line_height/2, y_position + line_height/2], 
-                   color='lightgray', linewidth=0.5)
+            file_path = file_info['path']
+            ax.text(0.02, y_position - line_height*0.7, file_path, 
+                    fontsize=10, weight='bold', color='#24292e')
+            y_position -= line_height * 2
             
             # Prepare side-by-side diff
             left_lines, right_lines = self._prepare_side_by_side_diff(file_info['diff_content'])
             
-            # Draw side-by-side diff
-            max_lines = min(50, max(len(left_lines), len(right_lines)))
-            for i in range(max_lines):
-                # Left side (original/deleted)
-                if i < len(left_lines):
-                    self._draw_diff_line(ax, left_lines[i], 0.02, y_position, 0.46, 'left')
-                
-                # Center divider
-                ax.plot([0.5, 0.5], [y_position + line_height/2, y_position - line_height/2], 
-                       color='lightgray', linewidth=0.5)
-                
-                # Right side (new/added)
-                if i < len(right_lines):
-                    self._draw_diff_line(ax, right_lines[i], 0.52, y_position, 0.46, 'right')
-                
-                y_position -= line_height
-                
-                if y_position < 0.02:
+            # Track line numbers (parse from hunk headers if available)
+            left_line_num = 1
+            right_line_num = 1
+            
+            # Find first hunk to get starting line numbers
+            for line in left_lines:
+                if line['type'] == 'hunk':
+                    import re
+                    hunk_match = re.match(r'@@ -(\d+),?\d* \+(\d+),?\d* @@', line['content'])
+                    if hunk_match:
+                        left_line_num = int(hunk_match.group(1))
+                        right_line_num = int(hunk_match.group(2))
                     break
             
-            y_position -= line_height
+            # Draw GitHub-style diff
+            max_lines = min(50, max(len(left_lines), len(right_lines)))
+            for i in range(max_lines):
+                if y_position < 0.02:
+                    break
+                
+                left_line = left_lines[i] if i < len(left_lines) else {'type': 'empty', 'content': ''}
+                right_line = right_lines[i] if i < len(right_lines) else {'type': 'empty', 'content': ''}
+                
+                # Draw the diff line with line numbers
+                self._draw_github_diff_line(ax, left_line, right_line, 
+                                          left_line_num, right_line_num, 
+                                          y_position)
+                
+                # Update line numbers
+                if left_line['type'] != 'empty' and left_line['type'] != 'add':
+                    left_line_num += 1
+                if right_line['type'] != 'empty' and right_line['type'] != 'delete':
+                    right_line_num += 1
+                
+                y_position -= line_height
             
-            if y_position < 0.02:
-                break
+            y_position -= line_height
         
         # Save the figure
         plt.tight_layout()
@@ -230,38 +242,113 @@ class DiffVisualizer:
         
         return left_lines, right_lines
     
-    def _draw_diff_line(self, ax, line_info, x_pos, y_pos, width, side):
-        """Draw a single line of diff content"""
-        if line_info['type'] == 'empty':
-            return
+    def _draw_github_diff_line(self, ax, left_line, right_line, left_num, right_num, y_pos):
+        """Draw a GitHub-style diff line with line numbers"""
+        # GitHub color scheme
+        colors = {
+            'delete_bg': '#ffeef0',
+            'delete_text': '#cb2431',
+            'add_bg': '#e6ffed',
+            'add_text': '#22863a',
+            'hunk_bg': '#f1f8ff',
+            'hunk_text': '#005cc5',
+            'line_num_bg': '#f6f8fa',
+            'line_num_text': '#959da5',
+            'border': '#e1e4e8'
+        }
         
-        # Set colors based on type and side
-        if line_info['type'] == 'delete':
-            bg_color = '#ffdddd'
-            text_color = 'darkred'
-        elif line_info['type'] == 'add':
-            bg_color = '#ddffdd'
-            text_color = 'darkgreen'
-        elif line_info['type'] == 'hunk':
-            bg_color = '#f0f0f0'
-            text_color = 'blue'
-        else:  # context
-            bg_color = None
-            text_color = 'black'
+        # Line number width
+        num_width = 0.06
+        code_start = num_width * 2 + 0.01
         
-        # Draw background
-        if bg_color:
-            rect = plt.Rectangle((x_pos, y_pos - self.line_height/2), width, self.line_height,
-                               facecolor=bg_color, edgecolor='none', alpha=0.5)
-            ax.add_patch(rect)
+        # Determine background colors
+        if left_line['type'] == 'delete' or right_line['type'] == 'add':
+            if left_line['type'] == 'delete':
+                left_bg = colors['delete_bg']
+            else:
+                left_bg = 'white'
+            
+            if right_line['type'] == 'add':
+                right_bg = colors['add_bg']
+            else:
+                right_bg = 'white'
+        elif left_line['type'] == 'hunk' or right_line['type'] == 'hunk':
+            left_bg = right_bg = colors['hunk_bg']
+        else:
+            left_bg = right_bg = 'white'
         
-        # Draw text
-        content = line_info['content']
-        if len(content) > 80:
-            content = content[:77] + '...'
+        # Draw backgrounds
+        # Left side background
+        left_rect = plt.Rectangle((0.01, y_pos - self.line_height/2), 0.48, self.line_height,
+                                facecolor=left_bg, edgecolor='none')
+        ax.add_patch(left_rect)
         
-        ax.text(x_pos + 0.01, y_pos, content, fontsize=8, color=text_color, 
-                verticalalignment='center')
+        # Right side background
+        right_rect = plt.Rectangle((0.51, y_pos - self.line_height/2), 0.48, self.line_height,
+                                 facecolor=right_bg, edgecolor='none')
+        ax.add_patch(right_rect)
+        
+        # Draw line numbers
+        # Left line numbers
+        if left_line['type'] != 'empty':
+            if left_line['type'] == 'hunk':
+                left_num_text = '...'
+            else:
+                left_num_text = str(left_num)
+            ax.text(0.03, y_pos, left_num_text, fontsize=8, 
+                   color=colors['line_num_text'], ha='right', va='center')
+        
+        # Right line numbers  
+        if right_line['type'] != 'empty':
+            if right_line['type'] == 'hunk':
+                right_num_text = '...'
+            else:
+                right_num_text = str(right_num)
+            ax.text(0.53, y_pos, right_num_text, fontsize=8,
+                   color=colors['line_num_text'], ha='right', va='center')
+        
+        # Draw code content
+        # Left side code
+        if left_line['type'] != 'empty':
+            content = left_line['content']
+            if len(content) > 60:
+                content = content[:57] + '...'
+            
+            if left_line['type'] == 'delete':
+                text_color = colors['delete_text']
+                ax.text(code_start - 0.005, y_pos, '-', fontsize=8, color=text_color, va='center')
+            elif left_line['type'] == 'hunk':
+                text_color = colors['hunk_text']
+            else:
+                text_color = '#24292e'
+            
+            ax.text(code_start + 0.01, y_pos, content, fontsize=8, 
+                   color=text_color, va='center')
+        
+        # Right side code
+        if right_line['type'] != 'empty':
+            content = right_line['content']
+            if len(content) > 60:
+                content = content[:57] + '...'
+            
+            if right_line['type'] == 'add':
+                text_color = colors['add_text']
+                ax.text(0.51 + code_start - 0.005, y_pos, '+', fontsize=8, color=text_color, va='center')
+            elif right_line['type'] == 'hunk':
+                text_color = colors['hunk_text']
+            else:
+                text_color = '#24292e'
+            
+            ax.text(0.51 + code_start + 0.01, y_pos, content, fontsize=8,
+                   color=text_color, va='center')
+        
+        # Draw vertical separator
+        ax.plot([0.5, 0.5], [y_pos + self.line_height/2, y_pos - self.line_height/2],
+               color=colors['border'], linewidth=0.5)
+        
+        # Draw horizontal lines
+        ax.plot([0.01, 0.99], [y_pos - self.line_height/2, y_pos - self.line_height/2],
+               color=colors['border'], linewidth=0.5)
     
     def _get_file_color(self, change_type):
         """Get color for file change type"""
