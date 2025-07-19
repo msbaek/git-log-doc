@@ -1,0 +1,38 @@
+Help me create a Product Requirements Document. Here's what we're building:
+
+git branch에 있는 모든 commit(누락 없이)에 대해서 commit 순서대로 
+commit hash, commit message, side by side diff 그리고 주요한 변경에 대한 설명을 추가해서
+다른 개발자들의 이해를 돕는 마크다운 문서를 작성하고 싶어.
+
+사용자는 github이나 local git repo의 branch나 git commit hash list를 제공할 수 있어.
+그러면 시스템은 해당 commit hash에 대해서 문서로 정리하면 돼.
+
+중요한 것은 각 commit에서 변경된 내역이 side by side diff image(png)로 잘 보이는 것이야.
+
+I will be building this with an Al co-pilot, so I don't need any team milestones or anything like that.
+
+Ask me if you have any questions for clarification, and continue to write the PRD.
+
+## 예제
+
+99b27b44 add SRS
+
+1. GitHub URL: (예: https://github.com/user/repo/tree/branch-name) 지원
+로컬 git repo의 경우 디렉토리 경로를 입력
+commit hash list는 텍스트 파일로 제공 
+
+2. Side-by-side diff 이미지:
+바이너리 파일 변경사항은 무시 
+도구나 라이브러리는 네가 제안해줘 
+
+3. 문서 출력:
+이 프로젝트 하위의 디렉토리를 생성해서 저장.
+이미지 파일명 규칙: 001-commit-hash.png. 하나의 commit hash에 2개 이상의 파일이 있는 경우 앞의 번호를 증가해서 이름 부여 
+
+4. 범위 제한:
+commit 별로 너무 변경이 크다면 주요 변경만 요약해서 이미지로 생성해줘 
+text file(*.md, *.java, *.txt 등)만 처리해줘 
+
+5. 기술 스택:
+어떤 프로그래밍 언어로 구현할 예정인가요? java, python 선호해 
+url, local branch name, commit hash 가 기술된 파일명 등을 인자로 받을 수 있는 CLI 도구로 만들어줘.
