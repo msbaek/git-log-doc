@@ -17,11 +17,11 @@ class DiffVisualizer:
         self.output_dir = Path(output_dir)
         self.image_width = image_width
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.line_height = 0.020  # Initialize line height
+        self.line_height = 0.025  # Initialize line height (increased for larger font)
         
         # Configure matplotlib for better text rendering with Korean font support
         self._setup_korean_font()
-        rcParams['font.size'] = 10
+        rcParams['font.size'] = 14  # Increased default font size
         rcParams['axes.unicode_minus'] = False  # Fix minus sign display
     
     def _setup_korean_font(self):
@@ -64,12 +64,12 @@ class DiffVisualizer:
             total_diff_lines += max(len(left_lines), len(right_lines))
         
         # Calculate dimensions
-        header_height = 150  # pixels for commit header
-        file_header_height = 50  # pixels per file header
-        line_height_px = 20  # pixels per line
-        total_height = header_height + len(commit_info['files']) * file_header_height + total_diff_lines * line_height_px + 100
+        header_height = 200  # pixels for commit header
+        file_header_height = 80  # pixels per file header
+        line_height_px = 35  # pixels per line (increased from 20)
+        total_height = header_height + len(commit_info['files']) * file_header_height + total_diff_lines * line_height_px + 150
         
-        fig_height = max(8, total_height / 100)
+        fig_height = max(10, total_height / 100)
         fig = plt.figure(figsize=(self.image_width/100, fig_height), facecolor='white')
         ax = fig.add_subplot(111)
         ax.set_xlim(0, 1)
@@ -78,30 +78,30 @@ class DiffVisualizer:
         
         # Variables for layout
         y_position = 0.98
-        line_height = 0.015
+        line_height = 0.025  # Increased from 0.015
         
         # Commit information
         ax.text(0.02, y_position, f"Commit: {commit_info['full_hash']}", 
-                fontsize=12, weight='bold')
+                fontsize=16, weight='bold')  # Increased from 12
         y_position -= line_height * 1.5
         
         ax.text(0.02, y_position, f"Author: {commit_info['author']} <{commit_info['email']}>", 
-                fontsize=10)
+                fontsize=14)  # Increased from 10
         y_position -= line_height
         
         ax.text(0.02, y_position, f"Date: {commit_info['date']}", 
-                fontsize=10)
+                fontsize=14)  # Increased from 10
         y_position -= line_height * 1.5
         
         ax.text(0.02, y_position, commit_info['message'], 
-                fontsize=10, wrap=True)
+                fontsize=14, wrap=True)  # Increased from 10
         y_position -= line_height * 2
         
         # Stats
         stats = commit_info['stats']
         ax.text(0.02, y_position, 
                 f"Files changed: {stats['files_changed']} | +{stats['insertions']} -{stats['deletions']}", 
-                fontsize=10, color='gray')
+                fontsize=14, color='gray')  # Increased from 10
         y_position -= line_height * 2
         
         # File diffs
@@ -117,7 +117,7 @@ class DiffVisualizer:
             
             file_path = file_info['path']
             ax.text(0.02, y_position - line_height*0.7, file_path, 
-                    fontsize=10, weight='bold', color='#24292e')
+                    fontsize=14, weight='bold', color='#24292e')  # Increased from 10
             y_position -= line_height * 2
             
             # Prepare side-by-side diff
@@ -295,8 +295,8 @@ class DiffVisualizer:
                 left_num_text = '...'
             else:
                 left_num_text = str(left_num)
-            ax.text(0.03, y_pos, left_num_text, fontsize=8, 
-                   color=colors['line_num_text'], ha='right', va='center')
+            ax.text(0.03, y_pos, left_num_text, fontsize=12, 
+                   color=colors['line_num_text'], ha='right', va='center')  # Increased from 8
         
         # Right line numbers  
         if right_line['type'] != 'empty':
@@ -304,8 +304,8 @@ class DiffVisualizer:
                 right_num_text = '...'
             else:
                 right_num_text = str(right_num)
-            ax.text(0.53, y_pos, right_num_text, fontsize=8,
-                   color=colors['line_num_text'], ha='right', va='center')
+            ax.text(0.53, y_pos, right_num_text, fontsize=12,
+                   color=colors['line_num_text'], ha='right', va='center')  # Increased from 8
         
         # Draw code content
         # Left side code
@@ -316,14 +316,14 @@ class DiffVisualizer:
             
             if left_line['type'] == 'delete':
                 text_color = colors['delete_text']
-                ax.text(code_start - 0.005, y_pos, '-', fontsize=8, color=text_color, va='center')
+                ax.text(code_start - 0.005, y_pos, '-', fontsize=12, color=text_color, va='center')  # Increased from 8
             elif left_line['type'] == 'hunk':
                 text_color = colors['hunk_text']
             else:
                 text_color = '#24292e'
             
-            ax.text(code_start + 0.01, y_pos, content, fontsize=8, 
-                   color=text_color, va='center')
+            ax.text(code_start + 0.01, y_pos, content, fontsize=12, 
+                   color=text_color, va='center')  # Increased from 8
         
         # Right side code
         if right_line['type'] != 'empty':
@@ -333,14 +333,14 @@ class DiffVisualizer:
             
             if right_line['type'] == 'add':
                 text_color = colors['add_text']
-                ax.text(0.51 + code_start - 0.005, y_pos, '+', fontsize=8, color=text_color, va='center')
+                ax.text(0.51 + code_start - 0.005, y_pos, '+', fontsize=12, color=text_color, va='center')  # Increased from 8
             elif right_line['type'] == 'hunk':
                 text_color = colors['hunk_text']
             else:
                 text_color = '#24292e'
             
-            ax.text(0.51 + code_start + 0.01, y_pos, content, fontsize=8,
-                   color=text_color, va='center')
+            ax.text(0.51 + code_start + 0.01, y_pos, content, fontsize=12,
+                   color=text_color, va='center')  # Increased from 8
         
         # Draw vertical separator
         ax.plot([0.5, 0.5], [y_pos + self.line_height/2, y_pos - self.line_height/2],
