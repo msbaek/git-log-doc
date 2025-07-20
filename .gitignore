@@ -59,3 +59,5 @@ docs/_build/
 *.tmp
 *.bak
 .temp/.claude/settings.local.json
+
+.claude/settings.local.json
