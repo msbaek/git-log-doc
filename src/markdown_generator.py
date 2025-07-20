@@ -7,10 +7,11 @@ from .utils.errors import FileSystemError
 class MarkdownGenerator:
     """Generate markdown documentation from processed commits"""
     
-    def __init__(self, output_dir, repo_info):
+    def __init__(self, output_dir, repo_info, diff_format='html'):
         self.logger = get_logger('git-doc-gen')
         self.output_dir = Path(output_dir)
         self.repo_info = repo_info
+        self.diff_format = diff_format
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
     def generate_document(self, commits):
@@ -91,10 +92,14 @@ class MarkdownGenerator:
             section += commit['message']
             section += "\n```\n\n"
         
-        # Diff image
-        if 'image_path' in commit:
+        # Diff visualization
+        if self.diff_format == 'image' and 'image_path' in commit:
             section += f"### Visual Diff\n\n"
             section += f"![diff]({commit['image_path']})\n\n"
+        elif self.diff_format == 'html' and 'html_diff' in commit:
+            section += f"### Diff\n\n"
+            section += commit['html_diff']
+            section += "\n\n"
         
         # Changed files summary
         if commit['files']:

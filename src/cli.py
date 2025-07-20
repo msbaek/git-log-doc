@@ -20,8 +20,9 @@ from .progress_reporter import ProgressReporter
 @click.option('--image-width', type=int, default=1200, help='Image width in pixels (default: 1200)')
 @click.option('--exclude-patterns', help='Comma-separated patterns to exclude (e.g., *.lock,node_modules/*)')
 @click.option('--all-commits', is_flag=True, help='Include all commits in branch history (not just branch-specific commits)')
+@click.option('--diff-format', type=click.Choice(['html', 'image']), default='html', help='Diff output format (default: html)')
 @click.option('--verbose', is_flag=True, help='Enable verbose logging')
-def main(url, local, branch, commits, output, max_files, image_width, exclude_patterns, all_commits, verbose):
+def main(url, local, branch, commits, output, max_files, image_width, exclude_patterns, all_commits, diff_format, verbose):
     """Git Commit Documentation Generator
     
     Generate markdown documentation with visual diffs for git commits.
@@ -69,14 +70,22 @@ def main(url, local, branch, commits, output, max_files, image_width, exclude_pa
             exclude_patterns=exclude_patterns.split(',') if exclude_patterns else []
         )
         
-        visualizer = DiffVisualizer(
-            output_dir=images_path,
-            image_width=image_width
-        )
+        # Initialize appropriate renderer based on format
+        if diff_format == 'image':
+            visualizer = DiffVisualizer(
+                output_dir=images_path,
+                image_width=image_width
+            )
+            html_renderer = None
+        else:
+            from .html_diff_renderer import HTMLDiffRenderer
+            visualizer = None
+            html_renderer = HTMLDiffRenderer()
         
         generator = MarkdownGenerator(
             output_dir=output_path,
-            repo_info=repo_info
+            repo_info=repo_info,
+            diff_format=diff_format
         )
         
         processed_commits = []
@@ -87,12 +96,17 @@ def main(url, local, branch, commits, output, max_files, image_width, exclude_pa
             try:
                 commit_info = processor.process_commit(commit_hash)
                 
-                image_filename = visualizer.generate_diff_image(
-                    commit_info=commit_info,
-                    index=idx + 1
-                )
+                # Generate diff based on format
+                if diff_format == 'image':
+                    image_filename = visualizer.generate_diff_image(
+                        commit_info=commit_info,
+                        index=idx + 1
+                    )
+                    commit_info['image_path'] = f"./images/{image_filename}"
+                else:
+                    # Generate HTML diff
+                    commit_info['html_diff'] = html_renderer.render_diff(commit_info)
                 
-                commit_info['image_path'] = f"./images/{image_filename}"
                 processed_commits.append(commit_info)
                 
                 progress.update_progress(idx + 1, f"커밋 {commit_hash[:8]} 처리 완료")
