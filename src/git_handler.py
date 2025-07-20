@@ -104,6 +104,20 @@ class GitHandler:
                 commit_range = f"{main_branch}..{current_branch}"
                 commits = list(self.repo.iter_commits(commit_range))
                 self.logger.info(f"Getting commits unique to {current_branch} (excluding {main_branch})")
+                
+                # 브랜치가 완전히 병합된 경우 감지
+                if not commits:
+                    try:
+                        # 브랜치의 최신 커밋이 main에 포함되어 있는지 확인
+                        branch_head = self.repo.commit(current_branch)
+                        main_commits = set(c.hexsha for c in self.repo.iter_commits(main_branch))
+                        
+                        if branch_head.hexsha in main_commits:
+                            self.logger.info(f"브랜치 '{current_branch}'가 '{main_branch}'에 완전히 병합되어 있습니다.")
+                        else:
+                            self.logger.info(f"브랜치 '{current_branch}'에 고유한 커밋이 없습니다.")
+                    except Exception as e:
+                        self.logger.debug(f"브랜치 병합 상태 확인 중 오류: {str(e)}")
             
             # Reverse to get chronological order (oldest first)
             commits.reverse()

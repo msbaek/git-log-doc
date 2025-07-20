@@ -51,6 +51,18 @@ def main(url, local, branch, commits, output, max_files, image_width, exclude_pa
         
         progress.update_task(f"총 {len(commit_list)}개의 커밋 발견")
         
+        # 커밋이 없는 경우 안내 메시지
+        if not commit_list and not all_commits:
+            logger.warning("브랜치 고유 커밋이 없습니다.")
+            click.echo("\n⚠️  브랜치 고유 커밋이 없습니다.")
+            click.echo(f"   브랜치 '{git_handler.repo_info['branch']}'의 모든 커밋이 이미 main/master에 포함되어 있습니다.")
+            click.echo(f"\n💡 브랜치의 전체 히스토리를 문서화하려면 --all-commits 옵션을 사용하세요:")
+            if url:
+                click.echo(f"   git-doc-gen --url \"{url}\" --all-commits")
+            elif local:
+                click.echo(f"   git-doc-gen --local \"{local}\" --branch \"{branch}\" --all-commits")
+            sys.exit(0)
+        
         processor = CommitProcessor(
             git_handler=git_handler,
             max_files=max_files,
@@ -118,10 +130,18 @@ def validate_inputs(url, local, commits):
             "최소 하나의 입력 옵션이 필요합니다: --url, --local, 또는 --commits"
         )
     
-    if sum(bool(x) for x in [url, local, commits]) > 1:
-        raise ConfigurationError(
-            "하나의 입력 옵션만 선택해주세요: --url, --local, 또는 --commits"
-        )
+    # commits 옵션을 사용할 때는 저장소 위치가 필요함
+    if commits:
+        if not (url or local):
+            raise ConfigurationError(
+                "--commits 옵션을 사용할 때는 --url 또는 --local 옵션이 필요합니다"
+            )
+    else:
+        # commits 옵션이 없을 때는 url과 local 중 하나만 선택
+        if url and local:
+            raise ConfigurationError(
+                "--url과 --local 옵션을 동시에 사용할 수 없습니다"
+            )
 
 
 def read_commit_file(filepath):
